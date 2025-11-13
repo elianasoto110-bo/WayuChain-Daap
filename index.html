@@ -75,13 +75,13 @@
         import { doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCBq9rkMII_EnRRaZewWxo4mV2ndz9-Bag,
+  apiKey: "AIzaSyCBq9rkMII_EnRRaZewWxo4mV2ndz9-Bag",
   authDomain: "wayuchain-demo.firebaseapp.com",
   projectId: "wayuchain-demo",
   storageBucket: "wayuchain-demo.firebasestorage.app",
@@ -90,8 +90,6 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig
-        
 
         // Variables globales proporcionadas por el entorno Canvas (serán undefined fuera)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -107,15 +105,7 @@ const app = initializeApp(firebaseConfig
                 if (firebaseConfig.projectId) {
                     isCanvasEnv = true;
                 }
-            } catch (e) {
-                console.error("Error al analizar __firebase_config:", e);
-                // Fallback a externa si falla el análisis
-                firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
             }
-        } else {
-            // Usar la configuración de respaldo para entornos externos
-            firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
-        }
 
 
         // Global references
@@ -162,11 +152,11 @@ const app = initializeApp(firebaseConfig
                 const vendor = document.getElementById('new-vendor').value.trim();
 
                 if (!description || isNaN(amount) || amount <= 0 || !vendor) {
-                    return window.displayMessage('Por favor, ingresa una descripción, un monto positivo y un nombre de proveedor válido.', 'error');
+                    return window.displayMessage('displayMessage');
                 }
                 
-                if (!window.db) return window.displayMessage('Error: Firestore no está activo.', 'error');
-                if (!window.userId) return window.displayMessage('Error: Usuario no autenticado.', 'error');
+                if (!window.db) return window.displayMessage('displayMessage');
+                if (!window.userId) return window.displayMessage('displayMessage');
 
                 try {
                     const newDoc = {
@@ -185,7 +175,7 @@ const app = initializeApp(firebaseConfig
 
                 } catch (error) {
                     console.error("Error al agregar documento:", error);
-                    window.displayMessage('Hubo un error al registrar el gasto. ' + error.message, 'error');
+                    window.displayMessage('displayMessage');
                 }
             };
 
@@ -194,7 +184,7 @@ const app = initializeApp(firebaseConfig
             window.displayMessage("🚨 FIREBASE OFF: Firestore no está activo. Ejecutando en modo de demostración sin persistencia. Para habilitar, inserta tus claves en el código.", 'error');
 
             // Sobrescribir funciones DApp para mostrar el modo demo
-            window.addNewTransaction = () => window.displayMessage('FIREBASE OFF: No puedes agregar transacciones en modo de demostración.', 'error');
+            window.addNewTransaction = () => window.displayMessage('displayMessage');
         }
 
         // --- FUNCIONES DE DAPP Y FIREBASE (Comunes) ---
@@ -416,7 +406,7 @@ const app = initializeApp(firebaseConfig
                 console.log("Transacciones actualizadas en tiempo real.");
             }, (error) => {
                 console.error("Error al escuchar Firestore:", error);
-                window.displayMessage("Error al cargar las transacciones. Consulta la consola.", 'error');
+                window.displayMessage('displayMessage');
             });
         };
         
