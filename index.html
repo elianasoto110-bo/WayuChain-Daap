@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAYUCHAIN - Energía que Ilumina Confianza</title>
+    
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Definición de la paleta de colores inspirada en el logo y Wayuu */
+        :root {
+            --color-wayu-dark: #113C4E; /* Azul Marino (Texto principal, Bordes) */
+            --color-wayu-medium: #00A693; /* Turquesa/Verde Mar (Botones, Accents) */
+            --color-wayu-light: #F0E7D6; /* Beige/Crema (Fondo de campos de entrada) */
+            --color-wayu-accent: #EF4444; /* Rojo Coral/Accent (Para salir/errores) */
+            --color-wayu-bg: #EAEFF4; /* Fondo suave Azul-Grisáceo (Fondo general) */
+        }
+        .bg-wayu-light { background-color: var(--color-wayu-light); }
+        .bg-wayu-medium { background-color: var(--color-wayu-medium); }
+        .bg-wayu-bg { background-color: var(--color-wayu-bg); }
+        .text-wayu-dark { color: var(--color-wayu-dark); }
+        .text-wayu-accent { color: var(--color-wayu-accent); }
+        .border-wayu-dark { border-color: var(--color-wayu-dark); }
+        .hover\:bg-wayu-dark:hover { background-color: var(--color-wayu-dark); }
+        .text-shadow { text-shadow: 2px 2px 6px rgba(17, 60, 78, 0.2); }
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Estilos específicos para la sección de Trazabilidad (Timeline) */
+        .timeline-container {
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .timeline-step {
+            /* Línea de tiempo vertical */
+            border-left: 3px solid var(--color-wayu-medium); 
+            padding: 10px 0 20px 20px;
+            position: relative;
+        }
+
+        .timeline-step:last-child {
+            /* Eliminar la línea en el último elemento */
+            border-left: none; 
+            padding-bottom: 0;
+        }
+
+        /* Marcador de paso: Azul oscuro para estático, Turquesa para dinámico */
+        .timeline-step::before {
+            content: ' ';
+            position: absolute;
+            left: -8px;
+            top: 15px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: var(--color-wayu-dark);
+            border: 3px solid var(--color-wayu-light);
+            box-shadow: 0 0 0 3px var(--color-wayu-medium); 
+        }
+
+        .timeline-step.dynamic-block::before {
+            background-color: var(--color-wayu-medium); /* Nuevo color para bloques dinámicos */
+            box-shadow: 0 0 0 3px var(--color-wayu-dark);
+        }
+    </style>
+    
+    <!-- Configuración e inicialización de Firebase/Firestore (MANDATORY) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCBq9rkMII_EnRRaZewWxo4mV2ndz9-Bag",
+  authDomain: "wayuchain-demo.firebaseapp.com",
+  projectId: "wayuchain-demo",
+  storageBucket: "wayuchain-demo.firebasestorage.app",
+  messagingSenderId: "83192995754",
+  appId: "1:83192995754:web:11e12275c52afd353d55d3"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig
+        
+
+        // Variables globales proporcionadas por el entorno Canvas (serán undefined fuera)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let firebaseConfig = {};
+        let isCanvasEnv = false;
+
+        // 1. Determinar la configuración a usar: Canvas vs. Externa
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+                if (firebaseConfig.projectId) {
+                    isCanvasEnv = true;
+                }
+            } catch (e) {
+                console.error("Error al analizar __firebase_config:", e);
+                // Fallback a externa si falla el análisis
+                firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+            }
+        } else {
+            // Usar la configuración de respaldo para entornos externos
+            firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+        }
+
+
+        // Global references
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.TRANSACTIONS_COLLECTION = `artifacts/${appId}/public/data/transactions`;
+        window.TOTAL_FUNDS = 1500000;
+        window.currentRole = null;
+        
+        // 2. Inicializar Firebase SÓLO si hay una clave de proyecto válida (no el placeholder "TU_PROJECT_ID_AQUI")
+        const isConfigValid = firebaseConfig.projectId && firebaseConfig.projectId !== "TU_PROJECT_ID_AQUI";
+
+        if (isConfigValid) {
+            window.app = initializeApp(firebaseConfig);
+            window.db = getFirestore(window.app);
+            window.auth = getAuth(window.app);
+            setLogLevel('Debug');
+
+            // Authentication logic
+            onAuthStateChanged(window.auth, async (user) => {
+                if (user) {
+                    window.userId = user.uid;
+                    console.log("User authenticated:", window.userId);
+                } else {
+                    // Sign in using custom token or anonymously
+                    try {
+                        if (initialAuthToken && isCanvasEnv) {
+                            await signInWithCustomToken(window.auth, initialAuthToken);
+                        } else {
+                            // Para entorno externo, iniciamos sesión anónima por defecto
+                            await signInAnonymously(window.auth); 
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
+                    }
+                }
+            });
+            
+            // Función para añadir transacciones (solo activa si Firebase es válido)
+            window.addNewTransaction = async () => {
+                const description = document.getElementById('new-desc').value.trim();
+                const amount = parseFloat(document.getElementById('new-amount').value);
+                const vendor = document.getElementById('new-vendor').value.trim();
+
+                if (!description || isNaN(amount) || amount <= 0 || !vendor) {
+                    return window.displayMessage('Por favor, ingresa una descripción, un monto positivo y un nombre de proveedor válido.', 'error');
+                }
+                
+                if (!window.db) return window.displayMessage('Error: Firestore no está activo.', 'error');
+                if (!window.userId) return window.displayMessage('Error: Usuario no autenticado.', 'error');
+
+                try {
+                    const newDoc = {
+                        user: window.currentUserName,
+                        role: 'ejecutor',
+                        description: description,
+                        amount: amount,
+                        vendor: vendor,
+                        timestamp: new Date().toISOString(),
+                    };
+
+                    await addDoc(collection(window.db, window.TRANSACTIONS_COLLECTION), newDoc);
+
+                    document.getElementById('transaction-form').reset();
+                    window.displayMessage('¡Nuevo Bloque de Gasto registrado con éxito en la cadena (simulada)!', 'success');
+
+                } catch (error) {
+                    console.error("Error al agregar documento:", error);
+                    window.displayMessage('Hubo un error al registrar el gasto. ' + error.message, 'error');
+                }
+            };
+
+        } else {
+            console.warn("ADVERTENCIA: Usando configuración de Firebase de respaldo (DUMMY). La persistencia está deshabilitada.");
+            window.displayMessage("🚨 FIREBASE OFF: Firestore no está activo. Ejecutando en modo de demostración sin persistencia. Para habilitar, inserta tus claves en el código.", 'error');
+
+            // Sobrescribir funciones DApp para mostrar el modo demo
+            window.addNewTransaction = () => window.displayMessage('FIREBASE OFF: No puedes agregar transacciones en modo de demostración.', 'error');
+        }
+
+        // --- FUNCIONES DE DAPP Y FIREBASE (Comunes) ---
+
+        // Simulación de los bloques de gasto estáticos (Bloques 1 al 5)
+        const staticBlocks = [
+            {
+                id: 1,
+                title: "Bloque 1: Recepción de Fondos",
+                role: "Financiador",
+                amount: 1500000.00,
+                description: `
+                    <p class="font-mono text-gray-800 font-bold mb-2">**Origen:** Financiadores Múltiples</p>
+                    <ul class="list-disc list-inside text-sm text-gray-800 space-y-1">
+                        <li>Fondos Gubernamentales: <span class="text-green-600 font-bold">$1.000.000.oo USD</span></li>
+                        <li>Fondos Privados: <span class="text-green-600 font-bold">$500.000.oo USD</span></li>
+                        <li class="font-bold border-t mt-2 pt-2 border-gray-400">
+                            Total Recibido: <span class="text-green-800 font-extrabold">$1.500.000.oo USD</span>
+                        </li>
+                    </ul>
+                `,
+                isExpense: false,
+                color: 'bg-green-100 border-green-500'
+            },
+            {
+                id: 2,
+                title: "Bloque 2: Asignación de Fondos",
+                role: "Financiador",
+                amount: 0,
+                description: `
+                    <p class="font-mono text-gray-800 font-bold mb-1">Monto Total Asignado a Entidad Ejecutora</p>
+                    <p class="font-mono text-green-700 font-extrabold text-lg">$1.500.000.oo USD</p>
+                `,
+                isExpense: false,
+                color: 'bg-wayu-light border-wayu-medium'
+            },
+            {
+                id: 3,
+                title: "Bloque 3: Gasto - Ejecutor 1 (MAGNASOLAR)",
+                role: "Ejecutor",
+                amount: 45300.00,
+                description: `
+                    <p class="text-sm text-gray-600 mb-2">El proveedor realiza la primera compra de materiales e implemente logistica para el inicio del proyecto.</p>
+                    <div class="my-4 p-3 bg-white rounded-lg shadow-md flex justify-center border border-gray-200">
+                        <img src="https://www.magnasolar.co/cdn/shop/files/logo_magna_color_2_lineas_70a88a05-5f03-4b21-956d-caf53577e482.png?crop=center&height=120&v=1728418700&width=250" 
+                            alt="Logo del Proveedor Magnasolar" 
+                            class="h-10 sm:h-12 object-contain"
+                            onerror="this.onerror=null; this.src='https://placehold.co/250x50/f3e8d2/6e4a2c?text=MAGNASOLAR+LOGO';">
+                    </div>
+                    <ul class="list-disc list-inside text-sm text-gray-800 space-y-1">
+                        <li>Compra 10 páneles solares: <span class="font-bold text-wayu-dark">$37.500.00 USD</span></li>
+                        <li>Transporte páneles: <span class="font-bold text-wayu-dark">$3.300.00 USD</span></li>
+                        <li>Mano de obra 5 técnicos: <span class="font-bold text-wayu-dark">$4.500.00 USD</span></li>
+                        <li class="font-bold border-t mt-2 pt-2 border-gray-300">Total Gastado: <span class="text-wayu-accent font-extrabold">$45.300.00 USD</span></li>
+                    </ul>
+                `,
+                isExpense: true,
+                color: 'bg-gray-100 border-wayu-medium'
+            },
+            {
+                id: 4,
+                title: "Bloque 4: Gasto - Ejecutor 2 (PROELCO)",
+                role: "Ejecutor",
+                amount: 23500.00,
+                description: `
+                    <p class="text-sm text-gray-600 mb-2">El proveedor realiza la compra de los contadores para ser integrados a la instalación de los paneles solares.</p>
+                    <div class="my-4 p-3 bg-white rounded-lg shadow-md flex justify-center border border-gray-200">
+                        <img src="https://proelco.com.co/wp-content/uploads/2025/04/LOGO-PROELCO-PRINCIPAL-COLOR.png" 
+                            alt="Logo del Proveedor PROELCO" 
+                            class="h-10 sm:h-12 object-contain"
+                            onerror="this.onerror=null; this.src='https://placehold.co/250x50/f3e8d2/6e4a2c?text=PROELCO+LOGO';">
+                    </div>
+                    <ul class="list-disc list-inside text-sm text-gray-800 space-y-1">
+                        <li>Compra 10 contadores para cada panel solar: <span class="font-bold text-wayu-dark">$23.500.00 USD</span></li>
+                        <li class="font-bold border-t mt-2 pt-2 border-gray-300">Total Gastado: <span class="text-wayu-accent font-extrabold">$23.500.00 USD</span></li>
+                    </ul>
+                `,
+                isExpense: true,
+                color: 'bg-gray-100 border-wayu-medium'
+            },
+            {
+                id: 5,
+                title: "Bloque 5: Validación y Pago OK",
+                role: "Validadores",
+                amount: 0,
+                description: `
+                    <div class="my-4 p-3 bg-white rounded-lg shadow-md flex justify-center border border-gray-200 overflow-hidden">
+                        <img src="https://www.semana.com/resizer/v2/37PZ66QJFFHY3M65Q4OJ6LTQWA.jpg?auth=0fa994eef6c2419ae8f6628235f1b71cb91c6f33005a6b82636c863b568c04d0&smart=true&quality=75&width=1280&height=720" 
+                            alt="Comunidad Wayuu en La Guajira" 
+                            class="w-full h-auto object-cover rounded-md"
+                            onerror="this.onerror=null; this.src='https://placehold.co/600x150/E0E7FF/6D28D9?text=COMUNIDAD+WAYUU+PROYECTO';">
+                    </div>
+                    <p class="text-sm text-wayu-dark mb-2 font-semibold">Validadores y Técnicos Confirman Ejecución</p>
+                    <div class="bg-green-100 p-4 rounded-lg shadow border-2 border-green-500">
+                        <ul class="list-disc list-inside text-green-800 text-sm space-y-1">
+                            <li>El equipo validador se desplaza hasta las localidades para realizar la auditoria de la compra de los materiales.</li>
+                            <li>Se reciben las facturas originales para su estudio y veracidad.</li>
+                            <li>Una vez terminada esta revisión, dan su **OK** en la blockchain para que el hito quede validado.</li>
+                        </ul>
+                        <p class="text-green-800 text-sm italic mt-3 pt-2 border-t border-green-300 font-bold">
+                            ¡Transparencia y ejecución verificada!
+                        </p>
+                    </div>
+                `,
+                isExpense: false,
+                color: 'bg-green-100 border-green-500'
+            },
+        ];
+        
+        // Formateo de número a moneda
+        const formatCurrency = (number) => {
+            return new Intl.NumberFormat('es-CO', { 
+                style: 'currency', 
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(number);
+        };
+        
+        // Renderiza el contenido dinámico del timeline
+        const renderTimeline = (dynamicBlocks) => {
+            const timelineContainer = document.getElementById('timeline-container');
+            if (!timelineContainer) return;
+            
+            // Combinar bloques estáticos y dinámicos. Usamos el ID del bloque estático más alto para continuar la numeración.
+            const nextBlockId = staticBlocks.length + 1;
+            
+            // Unir todos los bloques (estáticos + dinámicos) y ordenar
+            const allBlocks = [...staticBlocks, ...dynamicBlocks.map((doc, index) => ({
+                id: nextBlockId + index,
+                title: doc.data.vendor ? `Bloque ${nextBlockId + index}: Gasto - Ejecutor (${doc.data.vendor})` : `Bloque ${nextBlockId + index}: Nuevo Gasto - Ejecutor`,
+                role: "Ejecutor",
+                amount: doc.data.amount,
+                description: `
+                    <p class="text-sm text-gray-600 mb-2">Transacción enviada por ${doc.data.user} el ${new Date(doc.data.timestamp).toLocaleString()}.</p>
+                    <div class="bg-gray-100 p-3 rounded-lg shadow-inner border border-wayu-medium">
+                        <ul class="list-disc list-inside text-sm text-gray-800 space-y-1">
+                            <li>Descripción del Gasto: <span class="font-bold text-wayu-dark">${doc.data.description}</span></li>
+                            <li>Monto Gastado: <span class="font-bold text-wayu-accent">${formatCurrency(doc.data.amount)} USD</span></li>
+                            ${doc.data.details ? doc.data.details.map(detail => `<li>Detalle: ${detail}</li>`).join('') : ''}
+                        </ul>
+                        <p class="text-sm italic pt-2 mt-2 border-t border-gray-300">ID de Transacción (Blockchain): ${doc.id.substring(0, 15)}...</p>
+                    </div>
+                `,
+                isExpense: true,
+                color: 'bg-wayu-light border-wayu-dark',
+                isDynamic: true // Para aplicar el estilo de marcador diferente
+            }))];
+
+            // Limpiar y renderizar
+            timelineContainer.innerHTML = '';
+            
+            let totalSpent = 0;
+
+            allBlocks.forEach(block => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = `timeline-step ${block.isDynamic ? 'dynamic-block' : 'static-block'}`;
+                
+                // Actualizar el gasto total si es un bloque de gasto
+                if (block.isExpense) {
+                    totalSpent += block.amount;
+                }
+
+                stepDiv.innerHTML = `
+                    <h3 class="text-xl font-bold ${block.isDynamic ? 'text-wayu-medium' : 'text-wayu-dark'} mb-1">${block.title}</h3>
+                    <p class="text-xs text-gray-500 mb-2">Rol: ${block.role}</p>
+                    <div class="${block.color} p-3 rounded-lg shadow-inner border border-gray-300">
+                        ${block.description}
+                    </div>
+                `;
+                timelineContainer.appendChild(stepDiv);
+            });
+            
+            // Actualizar indicadores clave
+            updateKeyIndicators(totalSpent);
+        };
+        
+        // Actualiza los indicadores clave del Dashboard
+        const updateKeyIndicators = (totalSpent) => {
+            const availableBalance = window.TOTAL_FUNDS - totalSpent;
+
+            document.getElementById('total-spent').textContent = formatCurrency(totalSpent);
+            document.getElementById('available-balance').textContent = formatCurrency(availableBalance);
+
+            // Cambiar color del saldo disponible según el estado
+            const balanceElement = document.getElementById('available-balance-card');
+            balanceElement.classList.remove('bg-yellow-100', 'border-yellow-500', 'bg-red-100', 'border-red-500', 'bg-green-100', 'border-green-500');
+            
+            if (availableBalance < 100000) {
+                balanceElement.classList.add('bg-red-100', 'border-red-500');
+            } else if (availableBalance > 500000) {
+                balanceElement.classList.add('bg-green-100', 'border-green-500');
+            } else {
+                balanceElement.classList.add('bg-yellow-100', 'border-yellow-500');
+            }
+        };
+
+        // Escuchador en tiempo real de Firestore (Definición Base)
+        const setupRealtimeListener = () => {
+            if (!window.db) {
+                // Si la DB no está inicializada (modo demo / config inválida)
+                console.error("Firestore no está inicializado. Ejecutando render estático.");
+                renderTimeline([]); // Renderizar solo bloques estáticos
+                return; 
+            }
+            
+            const q = collection(window.db, window.TRANSACTIONS_COLLECTION);
+            
+            onSnapshot(q, (snapshot) => {
+                const dynamicBlocks = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                dynamicBlocks.sort((a, b) => {
+                    // Ordenar por timestamp
+                    const dateA = new Date(a.data.timestamp);
+                    const dateB = new Date(b.data.timestamp);
+                    if (isNaN(dateA) || isNaN(dateB)) return 0; // Fallback si no son fechas válidas
+                    return dateA - dateB;
+                });
+                renderTimeline(dynamicBlocks);
+                console.log("Transacciones actualizadas en tiempo real.");
+            }, (error) => {
+                console.error("Error al escuchar Firestore:", error);
+                window.displayMessage("Error al cargar las transacciones. Consulta la consola.", 'error');
+            });
+        };
+        
+        // Exponer la función al ámbito global (FIX del error ReferenceError)
+        window.setupRealtimeListener = setupRealtimeListener; 
+
+        // Función de reemplazo de alert (modal)
+        function displayMessage(message, type = 'info') {
+            const body = document.body;
+            const existingModal = document.getElementById('custom-alert-modal');
+            if (existingModal) existingModal.remove();
+            
+            let color = '';
+            let title = '';
+            
+            if (type === 'success') {
+                color = 'border-green-500';
+                title = '¡Éxito!';
+            } else if (type === 'error') {
+                color = 'border-wayu-accent';
+                title = 'Error';
+            } else {
+                color = 'border-wayu-dark';
+                title = 'Notificación WAYUCHAIN';
+            }
+
+
+            const modalHtml = `
+                <div id="custom-alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300">
+                    <div class="bg-white p-6 rounded-xl shadow-xl max-w-sm mx-auto transform transition-all duration-300 scale-100 border-4 ${color}">
+                        <h3 class="text-xl font-bold text-wayu-dark mb-4">${title}</h3>
+                        <p class="text-gray-700 mb-6">${message}</p>
+                        <button onclick="document.getElementById('custom-alert-modal').remove()" 
+                                class="w-full bg-wayu-medium hover:bg-wayu-dark text-white font-bold py-2 rounded-full transition duration-300 shadow-md">
+                            Aceptar
+                        </button>
+                    </div>
+                </div>
+            `;
+            body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        window.displayMessage = displayMessage; // Exponer para uso directo
+
+    </script>
+</head>
+<body class="bg-wayu-bg min-h-screen flex flex-col items-center p-4 sm:p-8 relative">
+
+    <!-- Vista de Bienvenida / Login -->
+    <div id="login-view" class="w-full max-w-lg mx-auto">
+        
+        <div class="bg-white p-6 sm:p-10 rounded-xl shadow-2xl border-4 border-wayu-dark text-center">
+            
+            <!-- Logo de WayuChain -->
+            <div class="flex justify-center mb-6">
+                <img src='https://i.postimg.cc/0Q4j3gYM/59870.jpg' 
+                     alt='Logo de WayuChain' 
+                     class="h-24 sm:h-28 object-contain rounded-lg shadow-lg">
+            </div>
+
+            <!-- Título Principal -->
+            <h1 class="text-6xl sm:text-7xl font-extrabold text-wayu-dark mb-2 text-shadow">
+                WAYUCHAIN
+            </h1>
+            <p id="subtitle" class="text-xl text-gray-600 mb-8 font-semibold">
+                Energía que Ilumina Confianza
+            </p>
+
+            <!-- 1. Contenedor de Login (Inicial) -->
+            <div id="login-container" class="max-w-xs mx-auto mb-10">
+                <p class="text-gray-700 leading-relaxed mb-4 font-bold">Inicia Sesión para Personalizar tu Experiencia</p>
+                <input type="text" id="username-input" placeholder="Nombre de Usuario (ej: Financiador-1)" 
+                        class="w-full bg-wayu-light border-2 border-wayu-dark text-wayu-dark py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-wayu-medium mb-4 transition duration-300">
+                
+                <button id="login-btn"
+                    class="w-full bg-wayu-medium hover:bg-wayu-dark text-white font-extrabold py-3 px-12 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-lg uppercase tracking-wider">
+                    Login
+                </button>
+            </div>
+            
+            <!-- 2. Contenedor de Selección de Rol (Muestra tras el login) -->
+            <div id="role-selection-container" class="hidden">
+                
+                <div class="bg-wayu-light p-4 rounded-lg shadow-inner mb-6 border border-wayu-medium">
+                    <p class="text-wayu-dark leading-relaxed max-w-xl mx-auto font-medium">
+                        Esta es una **simulación visual de una DApp**, diseñada como experimento para demostrar cómo la tecnología **blockchain** podría usarse para dar **trazabilidad y transparencia** a los fondos que ingresan a la región de La Guajira, asegurando la correcta implementación de **proyectos de energía sostenible**.
+                    </p>
+                </div>
+
+
+                <div class="mb-8">
+                    <label for="role-selector" class="block text-wayu-dark text-lg font-bold mb-2">Selecciona tu Rol en la Simulación:</label>
+                    <div class="relative max-w-xs mx-auto">
+                        <select id="role-selector" class="block appearance-none w-full bg-white border-2 border-wayu-dark text-wayu-dark py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:border-wayu-medium cursor-pointer transition duration-300 shadow-md">
+                            <option value="none" disabled selected>Elige un rol...</option>
+                            <option value="financiador">Financiador (Dona los fondos)</option>
+                            <option value="ejecutor">Organización Ejecutora</option>
+                            <option value="tecnicos">Técnicos</option>
+                            <option value="validadores">Validadores</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-wayu-dark">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón Principal: Entrar a la Simulación -->
+                <button id="enter-simulation-btn" disabled
+                    class="bg-wayu-medium hover:bg-wayu-dark text-white font-extrabold py-4 px-12 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-xl uppercase tracking-wider">
+                    Entrar a la Simulación
+                </button>
+                <p id="role-message" class="text-sm text-wayu-accent mt-3">Por favor, selecciona un rol antes de entrar.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista de Dashboard / Simulación de DApp -->
+    <div id="dashboard-view" class="w-full max-w-6xl mx-auto hidden mt-6">
+        
+        <!-- Encabezado del Dashboard -->
+        <header class="bg-wayu-dark text-white p-4 sm:p-6 rounded-t-xl flex flex-col sm:flex-row justify-between items-center shadow-xl">
+            <h2 class="text-2xl sm:text-3xl font-bold tracking-wider mb-2 sm:mb-0">
+                <span id="dashboard-role-title">DASHBOARD</span>
+            </h2>
+            <div class="flex items-center space-x-4">
+                <span id="dashboard-user-id" class="text-sm font-light italic">Usuario: [Nombre]</span>
+                <button id="logout-btn" onclick="window.handleLogout()"
+                    class="bg-wayu-accent hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105 shadow-md">
+                    Salir
+                </button>
+            </div>
+        </header>
+
+        <!-- Indicadores Clave -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-white shadow-inner border-x-4 border-t-0 border-wayu-medium">
+            
+            <!-- Fondos Totales -->
+            <div class="p-4 bg-wayu-light rounded-lg border-2 border-wayu-dark shadow-md">
+                <p class="text-sm font-semibold text-gray-600">Fondos Totales (USD)</p>
+                <p class="text-3xl font-extrabold text-wayu-dark mt-1">$1,500,000.oo</p>
+            </div>
+            
+            <!-- Gasto Verificado (Dinámico) -->
+            <div class="p-4 bg-green-100 rounded-lg border-2 border-green-500 shadow-md">
+                <p class="text-sm font-semibold text-green-700">Gasto Verificado Total</p>
+                <p id="total-spent" class="text-3xl font-extrabold text-green-600 mt-1">$0.00</p>
+            </div>
+            
+            <!-- Saldo Disponible (Dinámico) -->
+            <div id="available-balance-card" class="p-4 bg-yellow-100 rounded-lg border-2 border-yellow-500 shadow-md">
+                <p class="text-sm font-semibold text-yellow-700">Saldo Disponible</p>
+                <p id="available-balance" class="text-3xl font-extrabold text-yellow-600 mt-1">$1,500,000.oo</p>
+            </div>
+        </div>
+
+        <!-- Sección de Agregar Nueva Transacción (Solo para Ejecutor) -->
+        <div id="new-transaction-section" class="hidden p-6 sm:p-10 bg-gray-50 rounded-b-xl shadow-inner border-4 border-wayu-dark border-t-0">
+            <h2 class="text-3xl font-bold text-wayu-dark mb-6 text-center border-b pb-4">
+                Crear Nuevo Bloque de Gasto (Solo Ejecutor)
+            </h2>
+            <form id="transaction-form" class="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-wayu-medium">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="new-vendor">Proveedor / Entidad</label>
+                    <input type="text" id="new-vendor" placeholder="Ej: Nueva Empresa Solar" required
+                        class="w-full bg-wayu-light border-2 border-wayu-dark text-wayu-dark py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-wayu-medium transition duration-300">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="new-desc">Descripción del Gasto</label>
+                    <input type="text" id="new-desc" placeholder="Ej: Compra de baterías de litio" required
+                        class="w-full bg-wayu-light border-2 border-wayu-dark text-wayu-dark py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-wayu-medium transition duration-300">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="new-amount">Monto ($ USD)</label>
+                    <input type="number" id="new-amount" step="0.01" min="0.01" placeholder="Ej: 12500.50" required
+                        class="w-full bg-wayu-light border-2 border-wayu-dark text-wayu-dark py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-wayu-medium transition duration-300">
+                </div>
+                
+                <button type="button" onclick="window.addNewTransaction()"
+                    class="w-full bg-wayu-medium hover:bg-wayu-dark text-white font-extrabold py-3 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wider">
+                    Registrar Bloque en Wayuchain
+                </button>
+            </form>
+        </div>
+
+
+        <!-- Sección de Trazabilidad (Timeline) -->
+        <div id="trazability-section" class="p-6 sm:p-10 bg-white rounded-b-xl shadow-2xl border-4 border-wayu-medium border-t-0">
+            <h2 class="text-3xl font-bold text-wayu-dark mb-8 text-center border-b pb-4">
+                Registro Detallado de Transacciones (Blockchain)
+            </h2>
+
+            <div id="timeline-container" class="timeline-container max-w-2xl mx-auto">
+                <!-- Los bloques estáticos y dinámicos se renderizarán aquí por JavaScript -->
+                <p class="text-center text-gray-500">Cargando datos de la cadena...</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Simulación de sesión de usuario y control de vistas
+        let currentUserName = null;
+        let currentRole = null;
+
+        function handleLogin() {
+            const usernameInput = document.getElementById('username-input');
+            const loginContainer = document.getElementById('login-container');
+            const roleSelectionContainer = document.getElementById('role-selection-container');
+            const subtitle = document.getElementById('subtitle');
+            
+            const username = usernameInput.value.trim();
+
+            if (username.length > 2) {
+                window.currentUserName = username;
+                
+                // Ocultar login y mostrar selección de rol
+                loginContainer.classList.add('hidden');
+                roleSelectionContainer.classList.remove('hidden');
+
+                // Personalizar el mensaje de bienvenida y subtítulo
+                subtitle.innerHTML = `Bienvenido, <span class="text-wayu-dark font-extrabold">${username}</span>. Elige tu rol.`;
+                
+                window.displayMessage(`¡Login exitoso! Bienvenido, ${username}. Ahora selecciona tu rol.`, 'info');
+            } else {
+                window.displayMessage('Por favor, ingresa un nombre de usuario válido (mínimo 3 caracteres).', 'error');
+            }
+        }
+
+        function handleEnterSimulation() {
+            const roleSelector = document.getElementById('role-selector');
+            const loginView = document.getElementById('login-view');
+            const dashboardView = document.getElementById('dashboard-view');
+            const transactionSection = document.getElementById('new-transaction-section');
+            
+            const selectedRole = roleSelector.value;
+            const selectedRoleText = roleSelector.options[roleSelector.selectedIndex].text;
+            
+            if (selectedRole !== 'none') {
+                window.currentRole = selectedRole;
+
+                // Ocultar la vista de login y mostrar el Dashboard
+                loginView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+                
+                // Actualizar los datos del Dashboard
+                document.getElementById('dashboard-role-title').textContent = `${selectedRoleText.toUpperCase()} DASHBOARD`;
+                document.getElementById('dashboard-user-id').textContent = `Usuario: ${window.currentUserName} (${window.currentRole})`;
+
+                // Mostrar/Ocultar la sección de transacción según el rol
+                if (window.currentRole === 'ejecutor') {
+                    transactionSection.classList.remove('hidden');
+                } else {
+                    transactionSection.classList.add('hidden');
+                }
+                
+                // Iniciar el listener de Firestore
+                window.setupRealtimeListener();
+
+                // Scroll to top for a clean view transition
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } else {
+                window.displayMessage('Por favor, selecciona un rol antes de entrar.', 'error');
+            }
+        }
+        
+        function handleLogout() {
+            const loginView = document.getElementById('login-view');
+            const dashboardView = document.getElementById('dashboard-view');
+            
+            // Ocultar el Dashboard y mostrar la vista de Login
+            dashboardView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+
+            // Resetear la interfaz de login
+            document.getElementById('username-input').value = '';
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('role-selection-container').classList.add('hidden');
+            document.getElementById('role-selector').value = 'none';
+            document.getElementById('subtitle').textContent = 'Energía que Ilumina Confianza';
+            
+            // Asegurar que el botón de entrada se deshabilite al resetear
+            document.getElementById('enter-simulation-btn').disabled = true;
+            document.getElementById('role-message').classList.remove('hidden');
+
+            window.displayMessage('Has cerrado sesión correctamente. ¡Gracias por usar la simulación!', 'info');
+        }
+        window.handleLogout = handleLogout; // Exponer al ámbito global para el onclick
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameInput = document.getElementById('username-input');
+            const loginBtn = document.getElementById('login-btn');
+            const roleSelector = document.getElementById('role-selector');
+            const enterBtn = document.getElementById('enter-simulation-btn');
+            
+            // Lógica inicial del botón Enter
+            const checkRoleSelection = () => {
+                const selectedRole = roleSelector.value;
+                const message = document.getElementById('role-message');
+                if (selectedRole === 'none') {
+                    enterBtn.disabled = true;
+                    message.classList.remove('hidden');
+                } else {
+                    enterBtn.disabled = false;
+                    message.classList.add('hidden');
+                }
+            };
+
+            // Event Listeners
+            loginBtn.addEventListener('click', handleLogin);
+            usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+
+            roleSelector.addEventListener('change', checkRoleSelection);
+            enterBtn.addEventListener('click', handleEnterSimulation);
+
+            // Ejecutar chequeo inicial
+            checkRoleSelection();
+        });
+    </script>
+</body>
+</html>
