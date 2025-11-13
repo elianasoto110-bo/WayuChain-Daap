@@ -74,14 +74,12 @@
         import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Import the functions you need from the SDKs you need
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCBq9rkMII_EnRRaZewWxo4mV2ndz9-Bag",
+        // ==============================================================================
+        //  CONFIGURACIÓN DE FIREBASE PARA ENTORNO EXTERNO (GitHub Pages, Local, etc.)
+        //  !!! REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO FIREBASE REAL !!!
+        // ==============================================================================
+        const EXTERNAL_FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCBq9rkMII_EnRRaZewWxo4mV2ndz9-Bag",
   authDomain: "wayuchain-demo.firebaseapp.com",
   projectId: "wayuchain-demo",
   storageBucket: "wayuchain-demo.firebasestorage.app",
@@ -89,7 +87,7 @@ const firebaseConfig = {
   appId: "1:83192995754:web:11e12275c52afd353d55d3"
 };
 
-// Initialize Firebase
+            
 
         // Variables globales proporcionadas por el entorno Canvas (serán undefined fuera)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -105,7 +103,15 @@ const firebaseConfig = {
                 if (firebaseConfig.projectId) {
                     isCanvasEnv = true;
                 }
+            } catch (e) {
+                console.error("Error al analizar __firebase_config:", e);
+                // Fallback a externa si falla el análisis
+                firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
             }
+        } else {
+            // Usar la configuración de respaldo para entornos externos
+            firebaseConfig = EXTERNAL_FIREBASE_CONFIG;
+        }
 
 
         // Global references
@@ -152,11 +158,11 @@ const firebaseConfig = {
                 const vendor = document.getElementById('new-vendor').value.trim();
 
                 if (!description || isNaN(amount) || amount <= 0 || !vendor) {
-                    return window.displayMessage('displayMessage');
+                    return window.displayMessage('Por favor, ingresa una descripción, un monto positivo y un nombre de proveedor válido.', 'error');
                 }
                 
-                if (!window.db) return window.displayMessage('displayMessage');
-                if (!window.userId) return window.displayMessage('displayMessage');
+                if (!window.db) return window.displayMessage('Error: Firestore no está activo.', 'error');
+                if (!window.userId) return window.displayMessage('Error: Usuario no autenticado.', 'error');
 
                 try {
                     const newDoc = {
@@ -175,7 +181,7 @@ const firebaseConfig = {
 
                 } catch (error) {
                     console.error("Error al agregar documento:", error);
-                    window.displayMessage('displayMessage');
+                    window.displayMessage('Hubo un error al registrar el gasto. ' + error.message, 'error');
                 }
             };
 
@@ -184,7 +190,7 @@ const firebaseConfig = {
             window.displayMessage("🚨 FIREBASE OFF: Firestore no está activo. Ejecutando en modo de demostración sin persistencia. Para habilitar, inserta tus claves en el código.", 'error');
 
             // Sobrescribir funciones DApp para mostrar el modo demo
-            window.addNewTransaction = () => window.displayMessage('displayMessage');
+            window.addNewTransaction = () => window.displayMessage('FIREBASE OFF: No puedes agregar transacciones en modo de demostración.', 'error');
         }
 
         // --- FUNCIONES DE DAPP Y FIREBASE (Comunes) ---
@@ -406,7 +412,7 @@ const firebaseConfig = {
                 console.log("Transacciones actualizadas en tiempo real.");
             }, (error) => {
                 console.error("Error al escuchar Firestore:", error);
-                window.displayMessage('displayMessage');
+                window.displayMessage("Error al cargar las transacciones. Consulta la consola.", 'error');
             });
         };
         
